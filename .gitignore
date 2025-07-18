@@ -2,4 +2,6 @@ env/*
 .idea/
 .env
 .venv
-__pycache/*
+__pycache__/*
+.aider.chat.history.md
+.aider.tags.cache.v4

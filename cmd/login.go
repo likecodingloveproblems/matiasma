@@ -1,27 +1,32 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/likecodingloveproblems/matiasma/internal/auth"
 )
 
 // loginCmd represents the login command
 var loginCmd = &cobra.Command{
-	Use:   "login",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:   "login <phone-number>",
+	Short: "Login to Telegram account",
+	Long: `Authenticate with Telegram using your phone number.
+You will receive a verification code via Telegram that you'll need to input.`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("login called")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		phoneNumber := args[0]
+		if err := auth.Login(ctx, phoneNumber); err != nil {
+			fmt.Printf("Login failed: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Successfully logged in!")
 	},
 }
 

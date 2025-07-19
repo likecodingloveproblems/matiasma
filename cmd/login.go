@@ -37,7 +37,6 @@ You will receive a verification code via Telegram that you'll need to input.`,
 			panic(err.Error())
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-		defer cancel()
 
 		phoneNumber := args[0]
 		sessionStorage := session.New(ctx, phoneNumber, logger)
@@ -89,6 +88,7 @@ You will receive a verification code via Telegram that you'll need to input.`,
 		if err != nil {
 			panic(err.Error())
 		}
+		cancel()
 		fmt.Println("Successfully logged in!")
 	},
 }

@@ -70,12 +70,18 @@ You will receive a verification code via Telegram that you'll need to input.`,
 			codeChannel <- strings.TrimSpace(code)
 		}
 		passwordChannelWriter := func() {
-			fmt.Print("Enter password: ")
-			code, err := bufio.NewReader(os.Stdin).ReadString('\n')
-			if err != nil {
-				panic(err.Error())
+			select {
+			case <-notifPasswordRequiredChannel:
+				fmt.Print("Enter password: ")
+				code, err := bufio.NewReader(os.Stdin).ReadString('\n')
+				if err != nil {
+					panic(err.Error())
+				}
+				passwordChannel <- strings.TrimSpace(code)
+			case <-ctx.Done():
+				logger.Info("Context canceled while waiting for password requirement")
+				return
 			}
-			passwordChannel <- strings.TrimSpace(code)
 		}
 		channelAuthenticator := my_auth.New(phoneNumber, codeChannel, passwordChannel, notifPasswordRequiredChannel)
 

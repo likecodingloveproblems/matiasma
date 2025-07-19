@@ -3,23 +3,40 @@ package session
 import (
 	"context"
 	"github.com/gotd/td/telegram"
+	"github.com/likecodingloveproblems/matiasma/internal/db"
+	"github.com/likecodingloveproblems/matiasma/internal/models"
+	"go.uber.org/zap"
 )
 
 import (
 	"database/sql"
 	"time"
-	
-	_ "github.com/lib/pq"
 )
 
-type PostgresSession struct {
-	DB *sql.DB
-	queries *models.Queries
+type PostgresSessionStorage struct {
+	PhoneNumber string
+	Queries     *models.Queries
+	Logger      *zap.Logger
+	conn        *sql.DB
 }
 
-func (p PostgresSession) LoadSession(ctx context.Context) ([]byte, error) {
-	var sessionData []byte
-	session, err := p.queries.GetLatestSession(ctx)
+func New(ctx context.Context, phoneNumber string, logger *zap.Logger) *PostgresSessionStorage {
+	conn := db.New(ctx, logger)
+	return &PostgresSessionStorage{
+		PhoneNumber: phoneNumber,
+		Queries:     models.New(conn),
+		Logger:      logger,
+		conn:        conn,
+	}
+}
+
+func (p PostgresSessionStorage) Close() error {
+	return p.conn.Close()
+}
+
+func (p PostgresSessionStorage) LoadSession(ctx context.Context) ([]byte, error) {
+	p.Logger.Info("Load Session ", zap.String("phone_number", p.PhoneNumber))
+	session, err := p.Queries.GetUserLatestSession(ctx, p.PhoneNumber)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -29,11 +46,13 @@ func (p PostgresSession) LoadSession(ctx context.Context) ([]byte, error) {
 	return session.SessionData, nil
 }
 
-func (p PostgresSession) StoreSession(ctx context.Context, data []byte) error {
-	return p.queries.CreateSession(ctx, models.CreateSessionParams{
+func (p PostgresSessionStorage) StoreSession(ctx context.Context, data []byte) error {
+	p.Logger.Info("Store Session ", zap.String("phone_number", p.PhoneNumber))
+	return p.Queries.UpsertSession(ctx, models.UpsertSessionParams{
 		SessionData: data,
+		PhoneNumber: p.PhoneNumber,
 		CreatedAt:   time.Now().UTC(),
 	})
 }
 
-var _ telegram.SessionStorage = PostgresSession{}
+var _ telegram.SessionStorage = PostgresSessionStorage{}

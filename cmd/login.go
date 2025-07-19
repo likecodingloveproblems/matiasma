@@ -1,14 +1,15 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"fmt"
-	"github.com/gotd/td/examples"
 	"github.com/gotd/td/telegram"
-	"github.com/gotd/td/telegram/auth"
 	_ "github.com/lib/pq"
 	"github.com/likecodingloveproblems/matiasma/internal/session"
 	"go.uber.org/zap"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -55,8 +56,30 @@ You will receive a verification code via Telegram that you'll need to input.`,
 		if err != nil {
 			panic(err.Error())
 		}
-		flow := auth.NewFlow(examples.Terminal{PhoneNumber: phoneNumber}, auth.SendCodeOptions{})
-		err = client.Run(ctx, my_auth.AuthenticateIfNecessary(client, flow, phoneNumber, logger))
+
+		codeChannel := make(chan string)
+		passwordChannel := make(chan string)
+		notifPasswordRequiredChannel := make(chan struct{})
+
+		codeChannelWriter := func() {
+			fmt.Print("Enter code: ")
+			code, err := bufio.NewReader(os.Stdin).ReadString('\n')
+			if err != nil {
+				panic(err.Error())
+			}
+			codeChannel <- strings.TrimSpace(code)
+		}
+		passwordChannelWriter := func() {
+			fmt.Print("Enter password: ")
+			code, err := bufio.NewReader(os.Stdin).ReadString('\n')
+			if err != nil {
+				panic(err.Error())
+			}
+			passwordChannel <- strings.TrimSpace(code)
+		}
+		channelAuthenticator := my_auth.New(phoneNumber, codeChannel, passwordChannel, notifPasswordRequiredChannel)
+
+		err = client.Run(ctx, my_auth.AuthenticateIfNecessary(client, channelAuthenticator, logger, codeChannelWriter, passwordChannelWriter))
 		if err != nil {
 			panic(err.Error())
 		}

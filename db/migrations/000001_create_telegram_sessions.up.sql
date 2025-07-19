@@ -1,5 +1,5 @@
 CREATE TABLE telegram_sessions (
-    id SERIAL PRIMARY KEY,
+    phone_number VARCHAR PRIMARY KEY,
     session_data BYTEA NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

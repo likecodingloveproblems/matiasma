@@ -14,27 +14,26 @@ import (
 
 type PostgresSession struct {
 	DB *sql.DB
+	queries *models.Queries
 }
 
 func (p PostgresSession) LoadSession(ctx context.Context) ([]byte, error) {
 	var sessionData []byte
-	err := p.DB.QueryRowContext(ctx,
-		`SELECT session_data FROM telegram_sessions 
-		ORDER BY created_at DESC 
-		LIMIT 1`).Scan(&sessionData)
-		
+	session, err := p.queries.GetLatestSession(ctx)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
-	return sessionData, err
+	if err != nil {
+		return nil, err
+	}
+	return session.SessionData, nil
 }
 
 func (p PostgresSession) StoreSession(ctx context.Context, data []byte) error {
-	_, err := p.DB.ExecContext(ctx,
-		`INSERT INTO telegram_sessions (session_data, created_at)
-		VALUES ($1, $2)`,
-		data, time.Now().UTC())
-	return err
+	return p.queries.CreateSession(ctx, models.CreateSessionParams{
+		SessionData: data,
+		CreatedAt:   time.Now().UTC(),
+	})
 }
 
 var _ telegram.SessionStorage = PostgresSession{}
